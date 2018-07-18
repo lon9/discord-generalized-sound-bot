@@ -161,7 +161,7 @@ func (b *Bot) enqueuePlay(user *discordgo.User, guild *discordgo.Guild, sound *S
 	if v, ok := b.queues2.Load(guild.ID); ok {
 		c := v.(chan *Play)
 		if len(c) < b.config.MaxQueueSize {
-			b.queues2.Store(guild.ID, play)
+			c <- play
 		}
 	} else {
 		b.queues2.Store(guild.ID, make(chan *Play, b.config.MaxQueueSize))

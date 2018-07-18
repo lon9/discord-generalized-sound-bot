@@ -8,4 +8,4 @@ soundDir: /
 name: [Bot name]
 applicationId: [Discord application id]
 soundCacheSize: 100 [The number of cached sounds]
-MaxQueueSize: 6 [The size of queue per guild]
+maxQueueSize: 6 [The size of queue per guild]
