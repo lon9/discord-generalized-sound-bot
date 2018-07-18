@@ -1,0 +1,79 @@
+version: "3.5"
+services:
+  bot:
+    build: ./bot
+    restart: always
+    command: /app
+    volumes:
+      - ./sounds_dca:/sounds_dca:ro
+    environment:
+      - CONFIG_FILE=/run/secrets/config
+    secrets:
+      - config
+  
+  backend:
+    build: 
+      context: ./backend/
+      dockerfile: dockerfiles/prod/Dockerfile
+    environment:
+      - GIN_MODE=release
+      - VIRTUAL_HOST=${BACKEND_VIRTUAL_HOST}
+      - LETSENCRYPT_HOST=${BACKEND_LETSENCRYPT_HOST}
+      - LETSENCRYPT_EMAIL=${BACKEND_LETSENCRYPT_EMAIL}
+    command: /app -e production
+    expose:
+      - 3000
+    secrets:
+      - production.yaml
+    volumes:
+      - ./sounds_dca:/data/production
+
+  web:
+    build: 
+      context: ./web/
+      args:
+        - BASE_URL=${BACKEND_URL}
+        - WEB_TITLE=${WEB_TITLE}
+        - WEB_DESCRIPTION=${WEB_DESCRIPTION}
+        - WEB_OG_DESCRIPTION=${WEB_OG_DESCRIPTION}
+        - WEB_OG_URL=${WEB_OG_URL}
+        - WEB_OG_IMAGE=${WEB_OG_IMAGE}
+        - WEB_TWITTER_CARD=${WEB_TWITTER_CARD}
+    environment:
+      - VIRTUAL_HOST=${WEB_VIRTUAL_HOST}
+      - LETSENCRYPT_HOST=${WEB_LETSENCRYPT_HOST}
+      - LETSENCRYPT_EMAIL=${WEB_LETSENCRYPT_EMAIL}
+    command: npm run start
+    expose:
+      - 9000
+    restart: always
+    depends_on: 
+      - backend
+
+  admin:
+    build: 
+      context: ./admin/
+      args:
+        - BASE_URL=${BACKEND_URL}
+        - ADMIN_TITLE=${ADMIN_TITLE}
+    environment:
+      - VIRTUAL_HOST=${ADMIN_VIRTUAL_HOST}
+      - LETSENCRYPT_HOST=${ADMIN_LETSENCRYPT_HOST}
+      - LETSENCRYPT_EMAIL=${ADMIN_LETSENCRYPT_EMAIL}
+    command: npm run start
+    expose:
+      - 9001
+    depends_on:
+      - backend
+
+networks:
+  default:
+    external:
+      name: webproxy
+
+
+secrets:
+  config:
+    file: ./bot/config.yml
+  production.yaml:
+    file: ./backend/config/environments/production.yaml

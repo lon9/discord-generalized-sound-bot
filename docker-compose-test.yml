@@ -1,0 +1,9 @@
+version: "3.5"
+services:
+  backend-test:
+    build:
+      context: ./backend/
+      dockerfile: dockerfiles/test/Dockerfile
+    command: ash -c "go test -v ./..."
+    volumes:
+      - ./backend/:/go/src/github.com/lon9/discord-generalized-voice-bot/backend

@@ -1,0 +1,11 @@
+db:
+  url: "../data/test/sounds_test.db"
+server:
+  port: "3000"
+data:
+  path: "../data/test"
+  prefix: "sounds_dca"
+auth:
+  secret: "ks8tnQMCciUabiF2tBbs"
+  username: "admin"
+  password: "$2a$10$.Npl8RMzm0WFQXRMP9rofukT4b7vfK21yLZe7LekuwJ6omWUpPVsS"

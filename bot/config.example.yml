@@ -1,0 +1,11 @@
+botToken: [Discord bot token]
+dbUrl: /sounds_dca/sounds.db [Where the sounds.db is]
+botPrefix: [Bot command prefix]
+botHello: [Bot hello message]
+botPlaying: [Bot status]
+botNotFound:  [The message when sound not found]
+soundDir: /
+name: [Bot name]
+applicationId: [Discord application id]
+soundCacheSize: 100 [The number of cached sounds]
+MaxQueueSize: 6 [The size of queue per guild]

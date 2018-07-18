@@ -1,0 +1,11 @@
+### https://raw.github.com/github/gitignore/967cd6479319efde70a6fa44fa1bfa02020f2357/Global/VisualStudioCode.gitignore
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+.env
+sounds_dca/*
+!.gitkeep
