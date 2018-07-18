@@ -121,7 +121,36 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		go b.enqueuePlay(m.Author, guild, &sound)
 	}
+}
 
+func (b *Bot) voiceLoop(guildID string, ch chan *Play) {
+	var vc *discordgo.VoiceConnection
+	var err error
+	for {
+		select {
+		case play := <-ch:
+			if vc == nil {
+				vc, err = b.dg.ChannelVoiceJoin(play.GuildID, play.ChannelID, false, false)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+			}
+
+			if vc.ChannelID != play.ChannelID {
+				vc.ChangeChannel(play.ChannelID, false, false)
+				time.Sleep(time.Millisecond * 125)
+			}
+
+			if err := b.playSound(play, vc); err != nil {
+				log.Println(err)
+			}
+		case <-time.After(10 * time.Second):
+			b.queues2.Delete(guildID)
+			vc.Disconnect()
+			return
+		}
+	}
 }
 
 func (b *Bot) createPlay(user *discordgo.User, guild *discordgo.Guild, sound *Sound) (*Play, error) {
@@ -164,45 +193,22 @@ func (b *Bot) enqueuePlay(user *discordgo.User, guild *discordgo.Guild, sound *S
 			c <- play
 		}
 	} else {
-		b.queues2.Store(guild.ID, make(chan *Play, b.config.MaxQueueSize))
-		if err := b.playSound(play, nil); err != nil {
-			log.Println(err)
-		}
+		c := make(chan *Play, b.config.MaxQueueSize)
+		go b.voiceLoop(guild.ID, c)
+		b.queues2.Store(guild.ID, c)
+		c <- play
 	}
 }
 
 func (b *Bot) playSound(play *Play, vc *discordgo.VoiceConnection) (err error) {
-	if vc == nil {
-		vc, err = b.dg.ChannelVoiceJoin(play.GuildID, play.ChannelID, false, false)
-		if err != nil {
-			b.queues2.Delete(play.GuildID)
-			panic(err)
-		}
-	}
-
-	if vc.ChannelID != play.ChannelID {
-		vc.ChangeChannel(play.ChannelID, false, false)
-		time.Sleep(time.Millisecond * 125)
-	}
 
 	time.Sleep(time.Millisecond * 32)
 
-	if err := b.play(vc, play.Sound); err != nil {
-		log.Println(err)
-	}
-
-	if v, ok := b.queues2.Load(play.GuildID); ok {
-		c := v.(chan *Play)
-		if len(c) > 0 {
-			play := <-c
-			b.playSound(play, vc)
-			return nil
-		}
+	if err = b.play(vc, play.Sound); err != nil {
+		return
 	}
 
 	time.Sleep(time.Millisecond * 250)
-	b.queues2.Delete(play.GuildID)
-	vc.Disconnect()
 	return nil
 
 }
@@ -250,6 +256,7 @@ func (b *Bot) play(vc *discordgo.VoiceConnection, s *Sound) (err error) {
 			return err
 		}
 	}
+
 	vc.Speaking(false)
 
 	if b.cache.ItemCount() < b.config.SoundCacheSize {
