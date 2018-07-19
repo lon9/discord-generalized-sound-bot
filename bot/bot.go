@@ -21,11 +21,11 @@ import (
 
 // Bot is instance of bot
 type Bot struct {
-	dg      *discordgo.Session
-	db      *gorm.DB
-	config  *Config
-	queues2 *sync.Map
-	cache   *cache.Cache
+	dg     *discordgo.Session
+	db     *gorm.DB
+	config *Config
+	queues *sync.Map
+	cache  *cache.Cache
 }
 
 // Play is object for playing sound
@@ -39,9 +39,9 @@ type Play struct {
 // NewBot is constructor
 func NewBot(config *Config) (bot *Bot, err error) {
 	bot = &Bot{
-		config:  config,
-		queues2: &sync.Map{},
-		cache:   cache.New(15*time.Minute, 1*time.Minute),
+		config: config,
+		queues: &sync.Map{},
+		cache:  cache.New(15*time.Minute, 1*time.Minute),
 	}
 	bot.db, err = gorm.Open("sqlite3", config.BDURL)
 	if err != nil {
@@ -146,7 +146,7 @@ func (b *Bot) voiceLoop(guildID string, ch chan *Play) {
 				log.Println(err)
 			}
 		case <-time.After(10 * time.Second):
-			b.queues2.Delete(guildID)
+			b.queues.Delete(guildID)
 			vc.Disconnect()
 			return
 		}
@@ -187,7 +187,7 @@ func (b *Bot) enqueuePlay(user *discordgo.User, guild *discordgo.Guild, sound *S
 		return
 	}
 
-	if v, ok := b.queues2.Load(guild.ID); ok {
+	if v, ok := b.queues.Load(guild.ID); ok {
 		c := v.(chan *Play)
 		if len(c) < b.config.MaxQueueSize {
 			c <- play
@@ -195,7 +195,7 @@ func (b *Bot) enqueuePlay(user *discordgo.User, guild *discordgo.Guild, sound *S
 	} else {
 		c := make(chan *Play, b.config.MaxQueueSize)
 		go b.voiceLoop(guild.ID, c)
-		b.queues2.Store(guild.ID, c)
+		b.queues.Store(guild.ID, c)
 		c <- play
 	}
 }
