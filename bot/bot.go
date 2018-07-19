@@ -52,7 +52,6 @@ func NewBot(config *Config) (bot *Bot, err error) {
 		return
 	}
 	bot.dg.AddHandler(bot.ready)
-	bot.dg.AddHandler(bot.guildCreate)
 	bot.dg.AddHandler(bot.messageCreate)
 
 	bot.cache.OnEvicted(func(key string, data interface{}) {
@@ -70,19 +69,6 @@ func (b *Bot) Close() {
 
 func (b *Bot) ready(s *discordgo.Session, event *discordgo.Ready) {
 	s.UpdateStatus(0, b.config.BotPlaying)
-}
-
-func (b *Bot) guildCreate(s *discordgo.Session, event *discordgo.GuildCreate) {
-	if event.Guild.Unavailable {
-		return
-	}
-
-	for _, channel := range event.Guild.Channels {
-		if channel.Type == discordgo.ChannelTypeGuildText {
-			s.ChannelMessageSend(channel.ID, b.config.BotHello)
-			return
-		}
-	}
 }
 
 func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
