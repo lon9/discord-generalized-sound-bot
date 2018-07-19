@@ -215,7 +215,7 @@ func (b *Bot) playSound(play *Play, vc *discordgo.VoiceConnection) (err error) {
 				return
 			}
 		}
-		if err = b.sendSilence(vc, 7); err != nil {
+		if err = b.sendSilence(vc, 5); err != nil {
 			return
 		}
 
@@ -255,7 +255,7 @@ func (b *Bot) playSound(play *Play, vc *discordgo.VoiceConnection) (err error) {
 		}
 	}
 
-	if err = b.sendSilence(vc, 7); err != nil {
+	if err = b.sendSilence(vc, 5); err != nil {
 		return
 	}
 
