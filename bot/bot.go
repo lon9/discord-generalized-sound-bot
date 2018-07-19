@@ -19,6 +19,9 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+// Silence is silense packet
+var Silence = []byte{0xF8, 0xFF, 0xFE}
+
 // Bot is instance of bot
 type Bot struct {
 	dg     *discordgo.Session
@@ -204,12 +207,17 @@ func (b *Bot) playSound(play *Play, vc *discordgo.VoiceConnection) (err error) {
 		// Cache hit
 		data = raw.([][]byte)
 		vc.Speaking(true)
-		time.Sleep(time.Millisecond * 125)
-		for i := range data {
-			vc.OpusSend <- data[i]
+		if err = b.sendSilence(vc, 10); err != nil {
+			return
 		}
-		vc.Speaking(false)
-		time.Sleep(time.Millisecond * 125)
+		for i := range data {
+			if err = b.sendAudio(vc, data[i]); err != nil {
+				return
+			}
+		}
+		if err = b.sendSilence(vc, 7); err != nil {
+			return
+		}
 
 		// Update expiration
 		if b.cache.ItemCount() < b.config.SoundCacheSize {
@@ -225,9 +233,12 @@ func (b *Bot) playSound(play *Play, vc *discordgo.VoiceConnection) (err error) {
 	if err != nil {
 		return
 	}
+	defer f.Close()
 
 	vc.Speaking(true)
-	time.Sleep(time.Millisecond * 125)
+	if err = b.sendSilence(vc, 10); err != nil {
+		return
+	}
 	decoder := dca.NewDecoder(f)
 	for {
 		frame, err := decoder.OpusFrame()
@@ -239,20 +250,37 @@ func (b *Bot) playSound(play *Play, vc *discordgo.VoiceConnection) (err error) {
 		}
 
 		data = append(data, frame)
-		select {
-		case vc.OpusSend <- frame:
-		case <-time.After(time.Second):
+		if err = b.sendAudio(vc, frame); err != nil {
 			return err
 		}
 	}
 
-	vc.Speaking(false)
-	time.Sleep(time.Millisecond * 125)
+	if err = b.sendSilence(vc, 7); err != nil {
+		return
+	}
 
 	if b.cache.ItemCount() < b.config.SoundCacheSize {
 		b.cache.SetDefault(play.Sound.Name, data)
 	}
 
+	return
+}
+
+func (b *Bot) sendSilence(vc *discordgo.VoiceConnection, n int) (err error) {
+	for i := 0; i < n; i++ {
+		if err = b.sendAudio(vc, Silence); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (b *Bot) sendAudio(vc *discordgo.VoiceConnection, frame []byte) (err error) {
+	select {
+	case vc.OpusSend <- frame:
+	case <-time.After(time.Second):
+		return errors.New("Timeout to send")
+	}
 	return
 }
 
