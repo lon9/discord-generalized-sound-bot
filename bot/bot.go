@@ -138,15 +138,24 @@ func (b *Bot) voiceLoop(guildID string, ch chan *Play) {
 			}
 
 			if vc.ChannelID != play.ChannelID {
-				vc.ChangeChannel(play.ChannelID, false, false)
-				time.Sleep(time.Millisecond * 125)
+				if err = vc.ChangeChannel(play.ChannelID, false, false); err != nil {
+					log.Println(err)
+					continue
+				}
 			}
+
+			// Wait for join
+			time.Sleep(time.Millisecond * 125)
 
 			if err := b.playSound(play, vc); err != nil {
 				log.Println(err)
+				continue
 			}
-		case <-time.After(10 * time.Second):
+		case <-time.After(1 * time.Second):
+
+			// Disconnect from channel after 1 second
 			b.queues.Delete(guildID)
+			close(ch)
 			vc.Disconnect()
 			return
 		}
@@ -202,43 +211,36 @@ func (b *Bot) enqueuePlay(user *discordgo.User, guild *discordgo.Guild, sound *S
 
 func (b *Bot) playSound(play *Play, vc *discordgo.VoiceConnection) (err error) {
 
-	time.Sleep(time.Millisecond * 32)
-
-	if err = b.play(vc, play.Sound); err != nil {
-		return
-	}
-
-	time.Sleep(time.Millisecond * 250)
-	return nil
-
-}
-
-func (b *Bot) play(vc *discordgo.VoiceConnection, s *Sound) (err error) {
 	var data [][]byte
-	if raw, ok := b.cache.Get(s.Name); ok {
+	if raw, ok := b.cache.Get(play.Sound.Name); ok {
+
+		// Cache hit
 		data = raw.([][]byte)
 		vc.Speaking(true)
+		time.Sleep(time.Millisecond * 125)
 		for i := range data {
 			vc.OpusSend <- data[i]
 		}
 		vc.Speaking(false)
+		time.Sleep(time.Millisecond * 125)
 
 		// Update expiration
 		if b.cache.ItemCount() < b.config.SoundCacheSize {
-			if err := b.cache.Replace(s.Name, data, cache.DefaultExpiration); err != nil {
-				log.Println(err)
-				err = nil
+			if err = b.cache.Replace(play.Sound.Name, data, cache.DefaultExpiration); err != nil {
+				return
 			}
 		}
 		return
 	}
 
-	f, err := os.Open(filepath.Join(b.config.SoundDir, s.Path))
+	// Load from file
+	f, err := os.Open(filepath.Join(b.config.SoundDir, play.Sound.Path))
 	if err != nil {
 		return
 	}
 
 	vc.Speaking(true)
+	time.Sleep(time.Millisecond * 125)
 	decoder := dca.NewDecoder(f)
 	for {
 		frame, err := decoder.OpusFrame()
@@ -258,10 +260,12 @@ func (b *Bot) play(vc *discordgo.VoiceConnection, s *Sound) (err error) {
 	}
 
 	vc.Speaking(false)
+	time.Sleep(time.Millisecond * 125)
 
 	if b.cache.ItemCount() < b.config.SoundCacheSize {
-		b.cache.SetDefault(s.Name, data)
+		b.cache.SetDefault(play.Sound.Name, data)
 	}
+
 	return
 }
 
