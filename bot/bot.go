@@ -157,6 +157,7 @@ func (b *Bot) voiceLoop(guildID string, ch chan *Play) {
 			b.queues.Delete(guildID)
 			close(ch)
 			vc.Disconnect()
+			vc.Close()
 			return
 		}
 	}
