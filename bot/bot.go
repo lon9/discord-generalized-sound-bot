@@ -211,9 +211,7 @@ func (b *Bot) playSound(play *Play, vc *discordgo.VoiceConnection) (err error) {
 			return
 		}
 		for i := range data {
-			if err = b.sendAudio(vc, data[i]); err != nil {
-				return
-			}
+			vc.OpusSend <- data[i]
 		}
 		if err = b.sendSilence(vc, 5); err != nil {
 			return
@@ -250,9 +248,7 @@ func (b *Bot) playSound(play *Play, vc *discordgo.VoiceConnection) (err error) {
 		}
 
 		data = append(data, frame)
-		if err = b.sendAudio(vc, frame); err != nil {
-			return err
-		}
+		vc.OpusSend <- frame
 	}
 
 	if err = b.sendSilence(vc, 5); err != nil {
@@ -268,18 +264,7 @@ func (b *Bot) playSound(play *Play, vc *discordgo.VoiceConnection) (err error) {
 
 func (b *Bot) sendSilence(vc *discordgo.VoiceConnection, n int) (err error) {
 	for i := 0; i < n; i++ {
-		if err = b.sendAudio(vc, Silence); err != nil {
-			return
-		}
-	}
-	return
-}
-
-func (b *Bot) sendAudio(vc *discordgo.VoiceConnection, frame []byte) (err error) {
-	select {
-	case vc.OpusSend <- frame:
-	case <-time.After(time.Second):
-		return errors.New("Timeout to send")
+		vc.OpusSend <- Silence
 	}
 	return
 }
