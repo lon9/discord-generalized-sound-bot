@@ -19,13 +19,17 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+// Silence is silense packet
+var Silence = []byte{0xF8, 0xFF, 0xFE}
+
 // Bot is instance of bot
 type Bot struct {
-	dg      *discordgo.Session
-	db      *gorm.DB
-	config  *Config
-	queues2 *sync.Map
-	cache   *cache.Cache
+	dg     *discordgo.Session
+	db     *gorm.DB
+	config *Config
+	queues map[string][]*Play
+	m      *sync.Mutex
+	cache  *cache.Cache
 }
 
 // Play is object for playing sound
@@ -39,9 +43,10 @@ type Play struct {
 // NewBot is constructor
 func NewBot(config *Config) (bot *Bot, err error) {
 	bot = &Bot{
-		config:  config,
-		queues2: &sync.Map{},
-		cache:   cache.New(15*time.Minute, 1*time.Minute),
+		config: config,
+		queues: make(map[string][]*Play, config.MaxQueueSize),
+		m:      new(sync.Mutex),
+		cache:  cache.New(15*time.Minute, 1*time.Minute),
 	}
 	bot.db, err = gorm.Open("sqlite3", config.BDURL)
 	if err != nil {
@@ -52,7 +57,6 @@ func NewBot(config *Config) (bot *Bot, err error) {
 		return
 	}
 	bot.dg.AddHandler(bot.ready)
-	bot.dg.AddHandler(bot.guildCreate)
 	bot.dg.AddHandler(bot.messageCreate)
 
 	bot.cache.OnEvicted(func(key string, data interface{}) {
@@ -70,19 +74,6 @@ func (b *Bot) Close() {
 
 func (b *Bot) ready(s *discordgo.Session, event *discordgo.Ready) {
 	s.UpdateStatus(0, b.config.BotPlaying)
-}
-
-func (b *Bot) guildCreate(s *discordgo.Session, event *discordgo.GuildCreate) {
-	if event.Guild.Unavailable {
-		return
-	}
-
-	for _, channel := range event.Guild.Channels {
-		if channel.Type == discordgo.ChannelTypeGuildText {
-			s.ChannelMessageSend(channel.ID, b.config.BotHello)
-			return
-		}
-	}
 }
 
 func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -119,9 +110,8 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			log.Println(err)
 			return
 		}
-		go b.enqueuePlay(m.Author, guild, &sound)
+		b.requestPlay(m.Author, guild, &sound)
 	}
-
 }
 
 func (b *Bot) createPlay(user *discordgo.User, guild *discordgo.Guild, sound *Sound) (*Play, error) {
@@ -151,109 +141,134 @@ func (b *Bot) getCurrentVoiceChannel(user *discordgo.User, guild *discordgo.Guil
 	return nil, errors.New("There is not user in voice channel")
 }
 
-func (b *Bot) enqueuePlay(user *discordgo.User, guild *discordgo.Guild, sound *Sound) {
+func (b *Bot) requestPlay(user *discordgo.User, guild *discordgo.Guild, sound *Sound) {
 	play, err := b.createPlay(user, guild, sound)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	if v, ok := b.queues2.Load(guild.ID); ok {
-		c := v.(chan *Play)
-		if len(c) < b.config.MaxQueueSize {
-			c <- play
+	b.m.Lock()
+	if queue, ok := b.queues[guild.ID]; ok {
+		if len(queue) < b.config.MaxQueueSize {
+			b.queues[guild.ID] = append(queue, play)
 		}
 	} else {
-		b.queues2.Store(guild.ID, make(chan *Play, b.config.MaxQueueSize))
-		if err := b.playSound(play, nil); err != nil {
+		b.queues[guild.ID] = []*Play{play}
+		go b.runPlayer(guild.ID)
+	}
+	b.m.Unlock()
+}
+
+func (b *Bot) runPlayer(guildID string) {
+	var lastChannel string
+	var vc *discordgo.VoiceConnection
+	for {
+		b.m.Lock()
+		var play *Play
+
+		if queue, ok := b.queues[guildID]; ok && len(queue) > 0 {
+			play = queue[0]
+			b.queues[guildID] = queue[1:]
+		} else {
+			break
+		}
+		b.m.Unlock()
+
+		if lastChannel != play.ChannelID && vc != nil {
+			vc.Disconnect()
+			vc = nil
+		}
+
+		var err error
+		vc, err = b.playSound(play, vc)
+		if err != nil {
 			log.Println(err)
 		}
+		lastChannel = play.ChannelID
 	}
+	if vc != nil {
+		vc.Disconnect()
+	}
+
+	delete(b.queues, guildID)
+	b.m.Unlock()
 }
 
-func (b *Bot) playSound(play *Play, vc *discordgo.VoiceConnection) (err error) {
-	if vc == nil {
-		vc, err = b.dg.ChannelVoiceJoin(play.GuildID, play.ChannelID, false, false)
+func (b *Bot) playSound(play *Play, vc *discordgo.VoiceConnection) (*discordgo.VoiceConnection, error) {
+
+	var err error
+	if vc == nil || !vc.Ready {
+		vc, err = b.dg.ChannelVoiceJoin(play.GuildID, play.ChannelID, false, true)
 		if err != nil {
-			b.queues2.Delete(play.GuildID)
-			panic(err)
+			return nil, err
 		}
 	}
 
-	if vc.ChannelID != play.ChannelID {
-		vc.ChangeChannel(play.ChannelID, false, false)
-		time.Sleep(time.Millisecond * 125)
-	}
-
-	time.Sleep(time.Millisecond * 32)
-
-	if err := b.play(vc, play.Sound); err != nil {
-		log.Println(err)
-	}
-
-	if v, ok := b.queues2.Load(play.GuildID); ok {
-		c := v.(chan *Play)
-		if len(c) > 0 {
-			play := <-c
-			b.playSound(play, vc)
-			return nil
-		}
-	}
-
-	time.Sleep(time.Millisecond * 250)
-	b.queues2.Delete(play.GuildID)
-	vc.Disconnect()
-	return nil
-
-}
-
-func (b *Bot) play(vc *discordgo.VoiceConnection, s *Sound) (err error) {
 	var data [][]byte
-	if raw, ok := b.cache.Get(s.Name); ok {
+	if raw, ok := b.cache.Get(play.Sound.Name); ok {
+
+		// Cache hit
 		data = raw.([][]byte)
 		vc.Speaking(true)
+		if err := b.sendSilence(vc, 10); err != nil {
+			return nil, err
+		}
 		for i := range data {
 			vc.OpusSend <- data[i]
 		}
-		vc.Speaking(false)
+		if err := b.sendSilence(vc, 5); err != nil {
+			return nil, err
+		}
 
 		// Update expiration
 		if b.cache.ItemCount() < b.config.SoundCacheSize {
-			if err := b.cache.Replace(s.Name, data, cache.DefaultExpiration); err != nil {
-				log.Println(err)
-				err = nil
+			if err := b.cache.Replace(play.Sound.Name, data, cache.DefaultExpiration); err != nil {
+				return nil, err
 			}
 		}
-		return
+		return vc, nil
 	}
 
-	f, err := os.Open(filepath.Join(b.config.SoundDir, s.Path))
+	// Load from file
+	f, err := os.Open(filepath.Join(b.config.SoundDir, play.Sound.Path))
 	if err != nil {
-		return
+		return nil, err
 	}
+	defer f.Close()
 
 	vc.Speaking(true)
+	if err = b.sendSilence(vc, 10); err != nil {
+		return nil, err
+	}
 	decoder := dca.NewDecoder(f)
 	for {
 		frame, err := decoder.OpusFrame()
 		if err != nil {
 			if err != io.EOF {
-				return err
+				return nil, err
 			}
 			break
 		}
 
 		data = append(data, frame)
-		select {
-		case vc.OpusSend <- frame:
-		case <-time.After(time.Second):
-			return err
-		}
+		vc.OpusSend <- frame
 	}
-	vc.Speaking(false)
+
+	if err = b.sendSilence(vc, 5); err != nil {
+		return nil, err
+	}
 
 	if b.cache.ItemCount() < b.config.SoundCacheSize {
-		b.cache.SetDefault(s.Name, data)
+		b.cache.SetDefault(play.Sound.Name, data)
+	}
+
+	return vc, err
+}
+
+func (b *Bot) sendSilence(vc *discordgo.VoiceConnection, n int) (err error) {
+	for i := 0; i < n; i++ {
+		vc.OpusSend <- Silence
 	}
 	return
 }
