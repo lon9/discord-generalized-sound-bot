@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jinzhu/gorm"
-	"github.com/lon9/discord-generalized-voice-bot/backend/database"
+	"github.com/lon9/discord-generalized-sound-bot/backend/database"
 )
 
 // Category is category of sounds

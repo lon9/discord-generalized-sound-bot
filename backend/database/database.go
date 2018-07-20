@@ -2,7 +2,7 @@ package database
 
 import (
 	"github.com/jinzhu/gorm"
-	"github.com/lon9/discord-generalized-voice-bot/backend/config"
+	"github.com/lon9/discord-generalized-sound-bot/backend/config"
 )
 
 var d *gorm.DB

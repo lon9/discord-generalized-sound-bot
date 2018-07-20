@@ -6,10 +6,10 @@ import (
 	"os"
 
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"github.com/lon9/discord-generalized-voice-bot/backend/config"
-	"github.com/lon9/discord-generalized-voice-bot/backend/database"
-	"github.com/lon9/discord-generalized-voice-bot/backend/models"
-	"github.com/lon9/discord-generalized-voice-bot/backend/server"
+	"github.com/lon9/discord-generalized-sound-bot/backend/config"
+	"github.com/lon9/discord-generalized-sound-bot/backend/database"
+	"github.com/lon9/discord-generalized-sound-bot/backend/models"
+	"github.com/lon9/discord-generalized-sound-bot/backend/server"
 )
 
 func main() {
