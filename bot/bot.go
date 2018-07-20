@@ -161,7 +161,7 @@ func (b *Bot) requestPlay(user *discordgo.User, guild *discordgo.Guild, sound *S
 }
 
 func (b *Bot) runPlayer(guildID string) {
-	var lashChannel string
+	var lastChannel string
 	var vc *discordgo.VoiceConnection
 	for {
 		b.m.Lock()
@@ -175,7 +175,7 @@ func (b *Bot) runPlayer(guildID string) {
 		}
 		b.m.Unlock()
 
-		if lashChannel != play.ChannelID && vc != nil {
+		if lastChannel != play.ChannelID && vc != nil {
 			vc.Disconnect()
 			vc = nil
 		}
@@ -185,7 +185,7 @@ func (b *Bot) runPlayer(guildID string) {
 		if err != nil {
 			log.Println(err)
 		}
-		lashChannel = play.ChannelID
+		lastChannel = play.ChannelID
 	}
 	if vc != nil {
 		vc.Disconnect()
