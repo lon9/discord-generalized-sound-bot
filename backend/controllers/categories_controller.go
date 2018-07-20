@@ -8,7 +8,7 @@ import (
 	"github.com/jinzhu/gorm"
 
 	"github.com/gin-gonic/gin"
-	"github.com/lon9/discord-generalized-voice-bot/backend/models"
+	"github.com/lon9/discord-generalized-sound-bot/backend/models"
 )
 
 // CategoriesController is controller for Category

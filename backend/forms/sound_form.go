@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/jinzhu/gorm"
-	"github.com/lon9/discord-generalized-voice-bot/backend/config"
-	"github.com/lon9/discord-generalized-voice-bot/backend/models"
+	"github.com/lon9/discord-generalized-sound-bot/backend/config"
+	"github.com/lon9/discord-generalized-sound-bot/backend/models"
 )
 
 // SoundForm is form to add sound

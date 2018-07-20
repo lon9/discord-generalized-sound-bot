@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/lon9/discord-generalized-voice-bot/backend/config"
-	"github.com/lon9/discord-generalized-voice-bot/backend/database"
-	"github.com/lon9/discord-generalized-voice-bot/backend/models"
+	"github.com/lon9/discord-generalized-sound-bot/backend/config"
+	"github.com/lon9/discord-generalized-sound-bot/backend/database"
+	"github.com/lon9/discord-generalized-sound-bot/backend/models"
 	testfixtures "gopkg.in/testfixtures.v2"
 )
 

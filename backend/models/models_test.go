@@ -8,8 +8,8 @@ import (
 	"gopkg.in/testfixtures.v2"
 
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"github.com/lon9/discord-generalized-voice-bot/backend/config"
-	"github.com/lon9/discord-generalized-voice-bot/backend/database"
+	"github.com/lon9/discord-generalized-sound-bot/backend/config"
+	"github.com/lon9/discord-generalized-sound-bot/backend/database"
 )
 
 var fixtures *testfixtures.Context

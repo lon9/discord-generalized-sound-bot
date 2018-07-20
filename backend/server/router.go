@@ -8,8 +8,8 @@ import (
 	jwt "github.com/appleboy/gin-jwt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/lon9/discord-generalized-voice-bot/backend/config"
-	"github.com/lon9/discord-generalized-voice-bot/backend/controllers"
+	"github.com/lon9/discord-generalized-sound-bot/backend/config"
+	"github.com/lon9/discord-generalized-sound-bot/backend/controllers"
 )
 
 // NewRouter returns gin router

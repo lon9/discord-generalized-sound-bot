@@ -13,9 +13,9 @@ import (
 	filetype "gopkg.in/h2non/filetype.v1"
 
 	"github.com/gin-gonic/gin"
-	"github.com/lon9/discord-generalized-voice-bot/backend/config"
-	"github.com/lon9/discord-generalized-voice-bot/backend/forms"
-	"github.com/lon9/discord-generalized-voice-bot/backend/models"
+	"github.com/lon9/discord-generalized-sound-bot/backend/config"
+	"github.com/lon9/discord-generalized-sound-bot/backend/forms"
+	"github.com/lon9/discord-generalized-sound-bot/backend/models"
 )
 
 // SoundsController is controller of Sounds

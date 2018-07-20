@@ -1,6 +1,6 @@
 package server
 
-import "github.com/lon9/discord-generalized-voice-bot/backend/config"
+import "github.com/lon9/discord-generalized-sound-bot/backend/config"
 
 // Init initializes server
 func Init() {
