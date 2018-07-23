@@ -10,6 +10,7 @@ services:
       - CONFIG_FILE=/run/secrets/config
     secrets:
       - config
+    restart: always
   
   backend:
     build: 
@@ -27,6 +28,7 @@ services:
       - production.yaml
     volumes:
       - ./sounds_dca:/data/production
+    restart: always
 
   web:
     build: 
@@ -63,6 +65,7 @@ services:
     command: npm run start
     expose:
       - 9001
+    restart: always
     depends_on:
       - backend
 

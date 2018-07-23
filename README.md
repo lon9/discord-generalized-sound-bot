@@ -88,11 +88,15 @@ I'm maintaining backend with test.
 docker-compose -f docker-compose-test.yml run --rm backend-test
 ```
 
+### Dependencies
+
+backend depends on FFmpeg with opus and libvorbis
+
 ### TODO
 
 - [x] Making a bot.
 - [x] Making a web site to search sound name.
 - [x] Making a admin site to add sounds.
 - [x] Add Docker things.
-- [ ] Implement session shading.
+- [ ] Implement session sharding.
 - [ ] Implement a command to search sounds.
