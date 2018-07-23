@@ -15,6 +15,7 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/jonas747/dca"
+	"github.com/jonas747/dshardmanager"
 	cache "github.com/patrickmn/go-cache"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -24,7 +25,7 @@ var Silence = []byte{0xF8, 0xFF, 0xFE}
 
 // Bot is instance of bot
 type Bot struct {
-	dg     *discordgo.Session
+	dshardmanager.Manager
 	db     *gorm.DB
 	config *Config
 	queues map[string][]*Play
@@ -43,32 +44,54 @@ type Play struct {
 // NewBot is constructor
 func NewBot(config *Config) (bot *Bot, err error) {
 	bot = &Bot{
-		config: config,
-		queues: make(map[string][]*Play, config.MaxQueueSize),
-		m:      new(sync.Mutex),
-		cache:  cache.New(15*time.Minute, 1*time.Minute),
+		Manager: *dshardmanager.New("Bot " + config.Token),
+		config:  config,
+		queues:  make(map[string][]*Play, config.MaxQueueSize),
+		m:       new(sync.Mutex),
+		cache:   cache.New(15*time.Minute, 1*time.Minute),
 	}
+
+	// Open database
 	bot.db, err = gorm.Open("sqlite3", config.BDURL)
 	if err != nil {
 		return
 	}
-	bot.dg, err = discordgo.New("Bot " + config.Token)
-	if err != nil {
-		return
+
+	// Setting Discord sessions
+	bot.Name = config.Name
+	if config.Env == "development" {
+
+		// In development
+		bot.SetNumShards(1)
+		bot.db.LogMode(true)
+		bot.db.AutoMigrate(&Sound{})
+	} else {
+
+		// In production
+		recommended, err := bot.GetRecommendedCount()
+		if err != nil {
+			return nil, err
+		}
+		if recommended < 2 {
+			bot.SetNumShards(5)
+		}
+		if config.LogChannelID != "" {
+			bot.LogChannel = config.LogChannelID
+		}
 	}
-	bot.dg.AddHandler(bot.ready)
-	bot.dg.AddHandler(bot.messageCreate)
+	bot.AddHandler(bot.ready)
+	bot.AddHandler(bot.messageCreate)
 
 	bot.cache.OnEvicted(func(key string, data interface{}) {
 		log.Printf("Evicted cache:%s\n", key)
 	})
 
-	return bot, bot.dg.Open()
+	return bot, bot.Start()
 }
 
 // Close closes discord session and db connection
 func (b *Bot) Close() {
-	b.dg.Close()
+	b.StopAll()
 	b.db.Close()
 }
 
@@ -87,7 +110,7 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	if strings.HasPrefix(m.Content, "!help "+b.config.Name) {
-		s.ChannelMessageSend(m.ChannelID, b.config.BotHello)
+		s.ChannelMessageSend(m.ChannelID, b.config.BotHelp)
 		return
 	}
 
@@ -100,12 +123,12 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 
-		channel, err := b.dg.State.Channel(m.ChannelID)
+		channel, err := s.State.Channel(m.ChannelID)
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		guild, err := b.dg.State.Guild(channel.GuildID)
+		guild, err := s.State.Guild(channel.GuildID)
 		if err != nil {
 			log.Println(err)
 			return
@@ -131,7 +154,7 @@ func (b *Bot) createPlay(user *discordgo.User, guild *discordgo.Guild, sound *So
 func (b *Bot) getCurrentVoiceChannel(user *discordgo.User, guild *discordgo.Guild) (*discordgo.Channel, error) {
 	for _, vs := range guild.VoiceStates {
 		if vs.UserID == user.ID {
-			channel, err := b.dg.State.Channel(vs.ChannelID)
+			channel, err := b.SessionForGuildS(guild.ID).State.Channel(vs.ChannelID)
 			if err != nil {
 				return nil, err
 			}
@@ -199,7 +222,7 @@ func (b *Bot) playSound(play *Play, vc *discordgo.VoiceConnection) (*discordgo.V
 
 	var err error
 	if vc == nil || !vc.Ready {
-		vc, err = b.dg.ChannelVoiceJoin(play.GuildID, play.ChannelID, false, true)
+		vc, err = b.SessionForGuildS(play.GuildID).ChannelVoiceJoin(play.GuildID, play.ChannelID, false, true)
 		if err != nil {
 			// return nil, err
 			// TODO panic because of unstable behavior.
@@ -282,12 +305,14 @@ type Config struct {
 	Token          string `yaml:"botToken"`
 	BDURL          string `yaml:"dbUrl"`
 	BotPrefix      string `yaml:"botPrefix"`
-	BotHello       string `yaml:"botHello"`
+	BotHelp        string `yaml:"botHelp"`
 	BotPlaying     string `yaml:"botPlaying"`
 	BotNotFound    string `yaml:"botNotFound"`
 	SoundDir       string `yaml:"soundDir"`
 	SoundCacheSize int    `yaml:"soundCacheSize"`
 	MaxQueueSize   int    `yaml:"maxQueueSize"`
+	Env            string `yaml:"env"`
+	LogChannelID   string `yaml:"logChannelId"`
 }
 
 // NewConfig is constructor
@@ -300,6 +325,6 @@ func NewConfig(fname string) (config *Config, err error) {
 // Sound is structure of sounds table
 type Sound struct {
 	ID   int
-	Name string
+	Name string `gorm:"idnex"`
 	Path string
 }

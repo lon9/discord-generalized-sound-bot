@@ -64,17 +64,19 @@ Discord Generalized Sound Bot is a bot that can play sound on your Discord serve
       `bot/config.yml`
 
       ```yaml
-      botToken: [Discord bot token]
+      botToken: abcde [Discord bot token]
       dbUrl: /sounds_dca/sounds.db [Where the sounds.db is]
-      botPrefix: [Bot command prefix]
-      botHello: [Bot hello message]
-      botPlaying: [Bot status]
-      botNotFound:  [The message when sound not found]
+      botPrefix: $ [Bot command prefix]
+      botHelp: Help message [Bot help message]
+      botPlaying: Playing something [Bot status]
+      botNotFound: Sound not found [The message when sound not found]
       soundDir: /
-      name: [Bot name]
-      applicationId: [Discord application id]
+      name: ExampleBot [Bot name]
+      applicationId: 1234567 [Discord application id]
       soundCacheSize: 100 [The number of cached sounds]
-      MaxQueueSize: 6 [The size of queue per guild]
+      maxQueueSize: 6 [The size of queue per guild]
+      env: development [Environment]
+      logChannelId: 1234567 [Channel ID you want to send log on the channel]
       ```
 
 1. `docker-compose up -d`
@@ -98,5 +100,5 @@ backend depends on FFmpeg with opus and libvorbis
 - [x] Making a web site to search sound name.
 - [x] Making a admin site to add sounds.
 - [x] Add Docker things.
-- [ ] Implement session sharding.
+- [x] Implement session sharding.
 - [ ] Implement a command to search sounds.
