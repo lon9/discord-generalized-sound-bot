@@ -201,7 +201,9 @@ func (b *Bot) playSound(play *Play, vc *discordgo.VoiceConnection) (*discordgo.V
 	if vc == nil || !vc.Ready {
 		vc, err = b.dg.ChannelVoiceJoin(play.GuildID, play.ChannelID, false, true)
 		if err != nil {
-			return nil, err
+			// return nil, err
+			// TODO panic because of unstable behavior.
+			panic(err)
 		}
 	}
 
