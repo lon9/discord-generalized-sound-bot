@@ -78,6 +78,10 @@ func (b *Bot) ready(s *discordgo.Session, event *discordgo.Ready) {
 }
 
 func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+
+	// Trim space from content.
+	m.Content = strings.TrimSpace(m.Content)
+
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
@@ -92,9 +96,28 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	if strings.HasPrefix(m.Content, "!s "+b.config.Name) {
+		query := strings.TrimSpace(strings.Replace(m.Content, "!s "+b.config.Name+" ", "", -1))
+		var sounds models.Sounds
+		if err := sounds.SearchByName(query); err != nil {
+			log.Println(err)
+			return
+		}
+		if len(sounds) == 0 {
+			s.ChannelMessageSend(m.ChannelID, query+b.config.BotNotFound)
+			return
+		}
+		names := make([]string, len(sounds))
+		for i := range sounds {
+			names[i] = sounds[i].Name
+		}
+		s.ChannelMessageSend(m.ChannelID, strings.Join(names, " "))
+		return
+	}
+
 	if strings.HasPrefix(m.Content, b.config.BotPrefix) {
 
-		cmdName := strings.Replace(m.Content, b.config.BotPrefix, "", -1)
+		cmdName := strings.TrimSpace(strings.Replace(m.Content, b.config.BotPrefix, "", -1))
 		var sound models.Sound
 		if err := sound.FindByName(cmdName); err != nil {
 			if gorm.IsRecordNotFoundError(err) {
@@ -115,6 +138,7 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		b.requestPlay(m.Author, guild, &sound)
+		return
 	}
 }
 
