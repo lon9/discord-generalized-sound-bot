@@ -66,15 +66,6 @@ func NewBot(config *Config) (bot *Bot, err error) {
 		bot.db.LogMode(true)
 		bot.db.AutoMigrate(&Sound{})
 	} else {
-
-		// In production
-		recommended, err := bot.GetRecommendedCount()
-		if err != nil {
-			return nil, err
-		}
-		if recommended < 2 {
-			bot.SetNumShards(5)
-		}
 		if config.LogChannelID != "" {
 			bot.LogChannel = config.LogChannelID
 		}
