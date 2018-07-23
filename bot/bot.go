@@ -15,6 +15,7 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/jonas747/dca"
+	"github.com/lon9/discord-generalized-sound-bot/backend/models"
 	cache "github.com/patrickmn/go-cache"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -37,7 +38,7 @@ type Play struct {
 	GuildID   string
 	ChannelID string
 	UserID    string
-	Sound     *Sound
+	Sound     *models.Sound
 }
 
 // NewBot is constructor
@@ -94,10 +95,13 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if strings.HasPrefix(m.Content, b.config.BotPrefix) {
 
 		cmdName := strings.Replace(m.Content, b.config.BotPrefix, "", -1)
-		var sound Sound
-		if b.db.Where("name = ?", cmdName).First(&sound).RecordNotFound() {
-			s.ChannelMessageSend(m.ChannelID, cmdName+b.config.BotNotFound)
-			return
+		var sound models.Sound
+		if err := sound.FindByName(cmdName); err != nil {
+			if gorm.IsRecordNotFoundError(err) {
+				s.ChannelMessageSend(m.ChannelID, cmdName+b.config.BotNotFound)
+				return
+			}
+			log.Println(err)
 		}
 
 		channel, err := b.dg.State.Channel(m.ChannelID)
@@ -114,7 +118,7 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-func (b *Bot) createPlay(user *discordgo.User, guild *discordgo.Guild, sound *Sound) (*Play, error) {
+func (b *Bot) createPlay(user *discordgo.User, guild *discordgo.Guild, sound *models.Sound) (*Play, error) {
 	channel, err := b.getCurrentVoiceChannel(user, guild)
 	if err != nil {
 		return nil, err
@@ -141,7 +145,7 @@ func (b *Bot) getCurrentVoiceChannel(user *discordgo.User, guild *discordgo.Guil
 	return nil, errors.New("There is not user in voice channel")
 }
 
-func (b *Bot) requestPlay(user *discordgo.User, guild *discordgo.Guild, sound *Sound) {
+func (b *Bot) requestPlay(user *discordgo.User, guild *discordgo.Guild, sound *models.Sound) {
 	play, err := b.createPlay(user, guild, sound)
 	if err != nil {
 		log.Println(err)
@@ -295,11 +299,4 @@ func NewConfig(fname string) (config *Config, err error) {
 	b, err := ioutil.ReadFile(fname)
 	err = yaml.Unmarshal(b, &config)
 	return
-}
-
-// Sound is structure of sounds table
-type Sound struct {
-	ID   int
-	Name string
-	Path string
 }
