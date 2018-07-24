@@ -101,4 +101,4 @@ backend depends on FFmpeg with opus and libvorbis
 - [x] Making a admin site to add sounds.
 - [x] Add Docker things.
 - [x] Implement session sharding.
-- [ ] Implement a command to search sounds.
+- [x] Implement a command to search sounds.

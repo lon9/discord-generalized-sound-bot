@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -91,6 +92,10 @@ func (b *Bot) ready(s *discordgo.Session, event *discordgo.Ready) {
 }
 
 func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+
+	// Trim space from content.
+	m.Content = strings.TrimSpace(m.Content)
+
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
@@ -105,13 +110,38 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	if strings.HasPrefix(m.Content, "!s "+b.config.Name) {
+		query := fmt.Sprintf("%%%s%%", strings.TrimSpace(strings.Replace(m.Content, "!s "+b.config.Name+" ", "", -1)))
+		var sounds []Sound
+		if err := b.db.Where("name LIKE ?", query).Find(&sounds).Error; err != nil {
+			log.Println(err)
+			return
+		}
+		if len(sounds) == 0 {
+			s.ChannelMessageSend(m.ChannelID, query+b.config.BotNotFound)
+			return
+		}
+		names := make([]string, len(sounds))
+		for i := range sounds {
+			if i > 20 {
+				break
+			}
+			names[i] = "`" + sounds[i].Name + "`"
+		}
+		s.ChannelMessageSend(m.ChannelID, strings.Join(names, " "))
+		return
+	}
+
 	if strings.HasPrefix(m.Content, b.config.BotPrefix) {
 
-		cmdName := strings.Replace(m.Content, b.config.BotPrefix, "", -1)
+		cmdName := strings.TrimSpace(strings.Replace(m.Content, b.config.BotPrefix, "", -1))
 		var sound Sound
-		if b.db.Where("name = ?", cmdName).First(&sound).RecordNotFound() {
-			s.ChannelMessageSend(m.ChannelID, cmdName+b.config.BotNotFound)
-			return
+		if err := b.db.Where("name = ?", cmdName).Find(&sound).Error; err != nil {
+			if gorm.IsRecordNotFoundError(err) {
+				s.ChannelMessageSend(m.ChannelID, cmdName+b.config.BotNotFound)
+				return
+			}
+			log.Println(err)
 		}
 
 		channel, err := s.State.Channel(m.ChannelID)
@@ -125,6 +155,7 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		b.requestPlay(m.Author, guild, &sound)
+		return
 	}
 }
 
