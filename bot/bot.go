@@ -109,7 +109,10 @@ func (b *Bot) messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		names := make([]string, len(sounds))
 		for i := range sounds {
-			names[i] = sounds[i].Name
+			if i > 20 {
+				break
+			}
+			names[i] = "`" + sounds[i].Name + "`"
 		}
 		s.ChannelMessageSend(m.ChannelID, strings.Join(names, " "))
 		return
