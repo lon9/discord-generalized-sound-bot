@@ -1,6 +1,8 @@
-# Discord Generalized Sound Bot
+# Discord Generalized Sound Bot 
 
 Discord Generalized Sound Bot is a bot that can play sound on your Discord server.
+
+[![Build Status](https://travis-ci.org/lon9/discord-generalized-sound-bot.svg?branch=master)](https://travis-ci.org/lon9/discord-generalized-sound-bot)
 
 ## Features
 
