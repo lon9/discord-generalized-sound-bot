@@ -22,7 +22,7 @@ import (
 type SoundsController struct{}
 
 // Index returns sounds
-func (sc SoundsController) Index(c *gin.Context) {
+func (sc *SoundsController) Index(c *gin.Context) {
 	var sounds models.Sounds
 	if query := c.Query("query"); query != "" {
 		if err := sounds.SearchByName(query); err != nil {
@@ -46,7 +46,7 @@ func (sc SoundsController) Index(c *gin.Context) {
 }
 
 // Create creates Sound
-func (sc SoundsController) Create(c *gin.Context) {
+func (sc *SoundsController) Create(c *gin.Context) {
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
 		log.Println(err)
@@ -59,21 +59,6 @@ func (sc SoundsController) Create(c *gin.Context) {
 	name := c.PostForm("name")
 	categoryName := c.PostForm("categoryName")
 	if name == "" || categoryName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  http.StatusBadRequest,
-			"message": http.StatusText(http.StatusBadRequest),
-		})
-		return
-	}
-
-	// Insert to database
-	form := &forms.SoundForm{
-		Name:         name,
-		CategoryName: categoryName,
-	}
-	sound, err := form.Create()
-	if err != nil {
-		log.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  http.StatusBadRequest,
 			"message": http.StatusText(http.StatusBadRequest),
@@ -105,6 +90,21 @@ func (sc SoundsController) Create(c *gin.Context) {
 	// Check mime type
 	kind, err := filetype.Match(b)
 	if err != nil || (kind.Extension != "wav" && kind.Extension != "mp3" && kind.Extension != "ogg" && kind.Extension != "flac") {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": http.StatusText(http.StatusBadRequest),
+		})
+		return
+	}
+
+	// Insert to database
+	form := &forms.SoundForm{
+		Name:         name,
+		CategoryName: categoryName,
+	}
+	sound, err := form.Create()
+	if err != nil {
+		log.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status":  http.StatusBadRequest,
 			"message": http.StatusText(http.StatusBadRequest),
