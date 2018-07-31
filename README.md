@@ -1,6 +1,6 @@
 # Discord Generalized Sound Bot 
 
-Discord Generalized Sound Bot is a bot that can play sound on your Discord server.
+Discord Generalized Sound Bot is a bot that can play sounds on your Discord server.
 
 [![Build Status](https://travis-ci.org/lon9/discord-generalized-sound-bot.svg?branch=master)](https://travis-ci.org/lon9/discord-generalized-sound-bot)
 
@@ -82,6 +82,13 @@ Discord Generalized Sound Bot is a bot that can play sound on your Discord serve
       ```
 
 1. `docker-compose up -d`
+
+
+### addsound module
+
+You can use `addsound` module to initialize database from a directory structure.
+
+Check out addsound [directory](https://github.com/lon9/discord-generalized-sound-bot/tree/master/addsound)
 
 
 ## Development

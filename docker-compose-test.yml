@@ -7,3 +7,11 @@ services:
     command: ash -c "go test -v ./..."
     volumes:
       - ./backend/:/go/src/github.com/lon9/discord-generalized-sound-bot/backend
+  
+  addsound-test:
+    build: 
+      context: ./addsound/
+      dockerfile: dockerfiles/test/Dockerfile
+    command: ash -c "go test -v"
+    volumes:
+      - ./addsound/:/go/src/github.com/lon9/discord-generalized-sound-bot/addsound
