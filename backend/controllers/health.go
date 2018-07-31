@@ -10,6 +10,6 @@ import (
 type HealthController struct{}
 
 // Status returns Working!
-func (h HealthController) Status(c *gin.Context) {
+func (h *HealthController) Status(c *gin.Context) {
 	c.String(http.StatusOK, "Working!")
 }

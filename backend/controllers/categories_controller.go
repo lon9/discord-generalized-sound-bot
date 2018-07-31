@@ -15,7 +15,7 @@ import (
 type CategoriesController struct{}
 
 // Index returns categories
-func (cc CategoriesController) Index(c *gin.Context) {
+func (cc *CategoriesController) Index(c *gin.Context) {
 	var categories models.Categories
 	if query := c.Query("query"); query != "" {
 		if err := categories.SearchByName(query); err != nil {
@@ -47,7 +47,7 @@ func (cc CategoriesController) Index(c *gin.Context) {
 }
 
 // Show returns category
-func (cc CategoriesController) Show(c *gin.Context) {
+func (cc *CategoriesController) Show(c *gin.Context) {
 	var category models.Category
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

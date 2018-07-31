@@ -359,7 +359,6 @@ func TestSoundsCreate(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	t.Logf("token: %s", token)
 
 	// Test for wav and exist category
 	prepareTestDatabase()
@@ -651,6 +650,11 @@ func TestSoundsCreate(t *testing.T) {
 
 	if response.Message == "" {
 		t.Error("Response.Message should not empty")
+	}
+
+	db := database.GetDB()
+	if !db.Where("name = ?", "sample5").Find(new(models.Sound)).RecordNotFound() {
+		t.Error("should be not found")
 	}
 
 }
