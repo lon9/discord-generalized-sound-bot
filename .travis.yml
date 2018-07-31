@@ -18,3 +18,4 @@ install:
   - docker-compose -f docker-compose-test.yml build
 script:
   - docker-compose -f docker-compose-test.yml run --rm backend-test
+  - docker-compose -f docker-compose-test.yml run --rm addsound-test

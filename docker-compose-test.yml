@@ -10,8 +10,8 @@ services:
   
   addsound-test:
     build: 
-      context: ./addsound/
-      dockerfile: dockerfiles/test/Dockerfile
+      context: .
+      dockerfile: addsound/dockerfiles/test/Dockerfile
     command: ash -c "go test -v"
     volumes:
-      - ./addsound/:/go/src/github.com/lon9/discord-generalized-sound-bot/addsound
+      - .:/go/src/github.com/lon9/discord-generalized-sound-bot
