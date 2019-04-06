@@ -18,7 +18,7 @@ type login struct {
 }
 
 // NewRouter returns gin router
-func NewRouter() *gin.Engine {
+func NewRouter() (*gin.Engine, error) {
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
@@ -33,11 +33,24 @@ func NewRouter() *gin.Engine {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	authMiddleware := &jwt.GinJWTMiddleware{
-		Realm:      "Admin zone",
-		Key:        []byte(config.GetConfig().GetString("auth.secret")),
-		Timeout:    time.Hour,
-		MaxRefresh: time.Hour,
+	authMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
+		Realm:       "Admin zone",
+		Key:         []byte(config.GetConfig().GetString("auth.secret")),
+		Timeout:     time.Hour,
+		MaxRefresh:  time.Hour,
+		IdentityKey: "id",
+		PayloadFunc: func(data interface{}) jwt.MapClaims {
+			if v, ok := data.(string); ok {
+				return jwt.MapClaims{
+					"id": v,
+				}
+			}
+			return jwt.MapClaims{}
+		},
+		IdentityHandler: func(c *gin.Context) interface{} {
+			claims := jwt.ExtractClaims(c)
+			return claims["id"].(string)
+		},
 		Authenticator: func(c *gin.Context) (interface{}, error) {
 
 			var loginVals login
@@ -52,9 +65,15 @@ func NewRouter() *gin.Engine {
 				return true
 			}
 			if loginVals.Username == cfg.GetString("auth.username") && isSuccess(loginVals.Password) {
-				return nil, nil
+				return loginVals.Username, nil
 			}
 			return nil, jwt.ErrFailedAuthentication
+		},
+		Authorizator: func(data interface{}, c *gin.Context) bool {
+			if v, ok := data.(string); ok && v == cfg.GetString("auth.username") {
+				return true
+			}
+			return false
 		},
 		Unauthorized: func(c *gin.Context, code int, message string) {
 			c.JSON(code, gin.H{
@@ -65,6 +84,9 @@ func NewRouter() *gin.Engine {
 		TokenLookup:   "header:Authorization",
 		TokenHeadName: "Bearer",
 		TimeFunc:      time.Now,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	health := new(controllers.HealthController)
@@ -92,5 +114,5 @@ func NewRouter() *gin.Engine {
 		admin.GET("refresh_token", authMiddleware.RefreshHandler)
 	}
 
-	return router
+	return router, nil
 }

@@ -23,5 +23,7 @@ func main() {
 	config.Init(*env)
 	database.Init(false, &models.Sound{}, &models.Category{})
 	defer database.Close()
-	server.Init()
+	if err := server.Init(); err != nil {
+		panic(err)
+	}
 }
