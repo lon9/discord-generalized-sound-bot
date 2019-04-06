@@ -12,8 +12,13 @@ import (
 	"github.com/lon9/discord-generalized-sound-bot/backend/controllers"
 )
 
+type login struct {
+	Username string `form:"username" json:"username" binding:"required"`
+	Password string `form:"password" json:"password" binding:"required"`
+}
+
 // NewRouter returns gin router
-func NewRouter() *gin.Engine {
+func NewRouter() (*gin.Engine, error) {
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
@@ -28,22 +33,47 @@ func NewRouter() *gin.Engine {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	authMiddleware := &jwt.GinJWTMiddleware{
-		Realm:      "Admin zone",
-		Key:        []byte(config.GetConfig().GetString("auth.secret")),
-		Timeout:    time.Hour,
-		MaxRefresh: time.Hour,
-		Authenticator: func(username, password string, c *gin.Context) (interface{}, bool) {
+	authMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
+		Realm:       "Admin zone",
+		Key:         []byte(config.GetConfig().GetString("auth.secret")),
+		Timeout:     time.Hour,
+		MaxRefresh:  time.Hour,
+		IdentityKey: "id",
+		PayloadFunc: func(data interface{}) jwt.MapClaims {
+			if v, ok := data.(string); ok {
+				return jwt.MapClaims{
+					"id": v,
+				}
+			}
+			return jwt.MapClaims{}
+		},
+		IdentityHandler: func(c *gin.Context) interface{} {
+			claims := jwt.ExtractClaims(c)
+			return claims["id"].(string)
+		},
+		Authenticator: func(c *gin.Context) (interface{}, error) {
+
+			var loginVals login
+			if err := c.ShouldBind(&loginVals); err != nil {
+				return "", jwt.ErrMissingLoginValues
+			}
+
 			isSuccess := func(password string) bool {
 				if err := bcrypt.CompareHashAndPassword([]byte(cfg.GetString("auth.password")), []byte(password)); err != nil {
 					return false
 				}
 				return true
 			}
-			if username == cfg.GetString("auth.username") && isSuccess(password) {
-				return nil, true
+			if loginVals.Username == cfg.GetString("auth.username") && isSuccess(loginVals.Password) {
+				return loginVals.Username, nil
 			}
-			return nil, false
+			return nil, jwt.ErrFailedAuthentication
+		},
+		Authorizator: func(data interface{}, c *gin.Context) bool {
+			if v, ok := data.(string); ok && v == cfg.GetString("auth.username") {
+				return true
+			}
+			return false
 		},
 		Unauthorized: func(c *gin.Context, code int, message string) {
 			c.JSON(code, gin.H{
@@ -54,6 +84,9 @@ func NewRouter() *gin.Engine {
 		TokenLookup:   "header:Authorization",
 		TokenHeadName: "Bearer",
 		TimeFunc:      time.Now,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	health := new(controllers.HealthController)
@@ -81,5 +114,5 @@ func NewRouter() *gin.Engine {
 		admin.GET("refresh_token", authMiddleware.RefreshHandler)
 	}
 
-	return router
+	return router, nil
 }

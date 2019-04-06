@@ -394,7 +394,7 @@ func TestSoundsCreate(t *testing.T) {
 		t.Error("Response.Result should not to be nil")
 	}
 
-	if response.Result.ID == 3 {
+	if response.Result.ID == 0 {
 		t.Errorf("Response.Result.ID should not to be 0:%d", response.Result.ID)
 	}
 
@@ -662,7 +662,11 @@ func TestSoundsCreate(t *testing.T) {
 func TestMain(m *testing.M) {
 	config.Init("test")
 	database.Init(true, &models.Sound{}, &models.Category{})
-	r = server.NewRouter()
+	var err error
+	r, err = server.NewRouter()
+	if err != nil {
+		panic(err)
+	}
 	dbURL := config.GetConfig().GetString("db.url")
 	db, err := sql.Open("sqlite3", dbURL)
 	if err != nil {
