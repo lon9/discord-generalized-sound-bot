@@ -394,7 +394,7 @@ func TestSoundsCreate(t *testing.T) {
 		t.Error("Response.Result should not to be nil")
 	}
 
-	if response.Result.ID == 3 {
+	if response.Result.ID == 0 {
 		t.Errorf("Response.Result.ID should not to be 0:%d", response.Result.ID)
 	}
 
