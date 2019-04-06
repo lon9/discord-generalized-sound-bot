@@ -12,6 +12,11 @@ import (
 	"github.com/lon9/discord-generalized-sound-bot/backend/controllers"
 )
 
+type login struct {
+	Username string `form:"username" json:"username" binding:"required"`
+	Password string `form:"password" json:"password" binding:"required"`
+}
+
 // NewRouter returns gin router
 func NewRouter() *gin.Engine {
 	router := gin.New()
@@ -33,17 +38,23 @@ func NewRouter() *gin.Engine {
 		Key:        []byte(config.GetConfig().GetString("auth.secret")),
 		Timeout:    time.Hour,
 		MaxRefresh: time.Hour,
-		Authenticator: func(username, password string, c *gin.Context) (interface{}, bool) {
+		Authenticator: func(c *gin.Context) (interface{}, error) {
+
+			var loginVals login
+			if err := c.ShouldBind(&loginVals); err != nil {
+				return "", jwt.ErrMissingLoginValues
+			}
+
 			isSuccess := func(password string) bool {
 				if err := bcrypt.CompareHashAndPassword([]byte(cfg.GetString("auth.password")), []byte(password)); err != nil {
 					return false
 				}
 				return true
 			}
-			if username == cfg.GetString("auth.username") && isSuccess(password) {
-				return nil, true
+			if loginVals.Username == cfg.GetString("auth.username") && isSuccess(loginVals.Password) {
+				return nil, nil
 			}
-			return nil, false
+			return nil, jwt.ErrFailedAuthentication
 		},
 		Unauthorized: func(c *gin.Context, code int, message string) {
 			c.JSON(code, gin.H{
