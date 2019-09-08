@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/h2non/filetype"
 	"github.com/jonas747/dca"
-	filetype "gopkg.in/h2non/filetype.v1"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
