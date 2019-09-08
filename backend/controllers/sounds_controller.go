@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/h2non/filetype"
 	"github.com/jonas747/dca"
-	filetype "gopkg.in/h2non/filetype.v1"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lon9/discord-generalized-sound-bot/backend/config"
