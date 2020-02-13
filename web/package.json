@@ -2,7 +2,7 @@
   "name": "web",
   "version": "1.0.0",
   "description": "Nuxt.js project",
-  "author": "lon9 <rompei0924@gmail.com>",
+  "author": "lon9",
   "private": true,
   "config": {
     "nuxt": {
