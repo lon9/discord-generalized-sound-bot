@@ -1,4 +1,4 @@
-FROM node:alpine
+FROM node:alpine as build-env
 
 ARG BASE_URL=http://localhost:3000
 ARG WEB_TITLE="Web title here"
@@ -20,5 +20,26 @@ ENV WEB_TWITTER_CARD=${WEB_TWITTER_CARD}
 WORKDIR /app
 ADD . /app
 
-RUN npm install && npm cache clean -f
-RUN npm run build
+RUN yarn install && yarn build
+
+FROM node:alpine
+
+ARG BASE_URL=http://localhost:3000
+ARG WEB_TITLE="Web title here"
+ARG WEB_DESCRIPTION="Description"
+ARG WEB_OG_DESCRIPTION="Og description"
+ARG WEB_OG_URL="Og url"
+ARG WEB_OG_IMAGE="Og image"
+ARG WEB_TWITTER_CARD=summary_large_image
+
+ENV NODE_ENV=production
+ENV BASE_URL=${BASE_URL}
+ENV WEB_TITLE=${WEB_TITLE}
+ENV WEB_DESCRIPTION=${WEB_DESCRIPTION}
+ENV WEB_OG_DESCRIPTION=${WEB_OG_DESCRIPTION}
+ENV WEB_OG_URL=${WEB_OG_URL}
+ENV WEB_OG_IMAGE=${WEB_OG_IMAGE}
+ENV WEB_TWITTER_CARD=${WEB_TWITTER_CARD}
+
+WORKDIR /app
+COPY --from=build-env /app /app
